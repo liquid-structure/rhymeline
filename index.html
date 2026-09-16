@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhymeline — pattern-analog forecasting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0D1015;
+    --panel: #12161D;
+    --panel-2: #151A22;
+    --line: #262D38;
+    --line-soft: #1B2028;
+    --text: #E7E5DE;
+    --muted: #838C9C;
+    --muted-2: #5B6272;
+    --amber: #E3A857;
+    --amber-dim: rgba(227,168,87,0.18);
+    --cyan: #6FBFBF;
+    --cyan-dim: rgba(111,191,191,0.35);
+    --rose: #C1666B;
+    --sage: #93AE7A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size:14px;
+    line-height:1.5;
+    padding: 28px 18px 60px;
+  }
+  .wrap{max-width: 760px; margin: 0 auto;}
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: 34px;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    font-variation-settings: "opsz" 40;
+  }
+  .tagline{color:var(--muted); font-size:13px; margin:0 0 26px; max-width: 54ch;}
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .panel-label{
+    font-size:11px;
+    color:var(--muted-2);
+    letter-spacing:0.04em;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  textarea{
+    width:100%;
+    min-height:110px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:2px;
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    padding:10px;
+    resize:vertical;
+  }
+  textarea:focus{outline:1px solid var(--amber); border-color:var(--amber);}
+  .sample-btn{
+    background:none; border:none; color:var(--cyan); cursor:pointer;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; text-decoration:underline;
+    text-underline-offset:3px; padding:0;
+  }
+  .controls{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+    margin-top:14px;
+  }
+  @media (max-width: 560px){
+    .controls{grid-template-columns: repeat(2, 1fr);}
+  }
+  .controls-subhead{
+    font-size:10px; color:var(--muted-2); letter-spacing:0.05em;
+    margin:16px 0 8px;
+  }
+  .rhythm-callout{
+    font-size:12.5px; margin-bottom:10px; padding:8px 10px;
+    background:var(--panel-2); border-left:2px solid var(--amber); border-radius:2px;
+  }
+  .rhythm-callout .none{color:var(--muted-2);}
+  .field label{
+    display:block; font-size:10.5px; color:var(--muted-2);
+    letter-spacing:0.04em; margin-bottom:5px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    padding:7px 8px;
+    border-radius:2px;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--amber);}
+  .analyze-row{margin-top:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  button.analyze{
+    background:var(--amber);
+    color:#1a1206;
+    border:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.03em;
+    padding:10px 20px;
+    border-radius:2px;
+    cursor:pointer;
+  }
+  button.analyze:hover{filter:brightness(1.08);}
+  .status{font-size:12px; color:var(--muted);}
+  .status.err{color:var(--rose);}
+
+  .chart-title{
+    font-size:11px; color:var(--muted-2); letter-spacing:0.04em;
+    margin-bottom:8px; display:flex; justify-content:space-between;
+  }
+  svg{display:block; width:100%; height:auto;}
+  .channel{margin-bottom:16px;}
+  .channel:last-child{margin-bottom:0;}
+  .channel-label{font-size:10px; color:var(--muted-2); letter-spacing:0.05em; margin-bottom:4px;}
+  .legend{display:flex; gap:18px; margin-top:10px; font-size:11px; color:var(--muted); flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:14px; height:2px; display:inline-block;}
+
+  .strip{
+    display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .card{
+    flex: 0 0 160px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:10px;
+  }
+  .card .idx{font-size:10px; color:var(--muted-2);}
+  .card .sim{font-size:12px; color:var(--cyan); margin:2px 0 8px;}
+  .card .outcome{font-size:11.5px; margin-top:3px;}
+  .up{color:var(--sage);}
+  .down{color:var(--rose);}
+
+  .readout-top{display:flex; flex-wrap:wrap; gap:18px 26px; margin-bottom:18px;}
+  .rd-item .rd-label{font-size:10px; color:var(--muted-2); letter-spacing:0.04em; margin-bottom:4px;}
+  .rd-item .rd-value{font-size:17px; font-family:'Fraunces', serif; font-weight:500;}
+
+  table.dim-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.dim-table th{
+    text-align:left; color:var(--muted-2); font-weight:500; font-size:10px;
+    letter-spacing:0.04em; padding:0 10px 8px 0; border-bottom:1px solid var(--line);
+  }
+  table.dim-table td{padding:8px 10px 8px 0; border-bottom:1px solid var(--line-soft); white-space:nowrap;}
+
+  .empty{color:var(--muted-2); font-size:12px; padding: 30px 0; text-align:center;}
+  .divider{height:1px; background:var(--line-soft); margin:22px 0;}
+  .note{font-size:11.5px; color:var(--muted-2); margin-top:10px; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Rhymeline</h1>
+  <p class="tagline">Paste a set of 1–10 numbers for each moment in time. It searches history for stretches that moved the same way across every channel at once, then shows what happened after those moments — as a range of outcomes, not a single prediction.</p>
+
+  <div class="panel">
+    <div class="panel-label">
+      <span>INPUT — ONE SET PER TIME STEP</span>
+      <button class="sample-btn" id="sampleBtn">use sample data</button>
+    </div>
+    <textarea id="dataInput" placeholder="One line per time step, 1&#8211;10 numbers each, comma or space separated.&#10;e.g.&#10;4, 8, 15, 16, 23&#10;5, 9, 14, 18, 22&#10;6, 9, 13, 17, 24"></textarea>
+
+    <div class="controls">
+      <div class="field">
+        <label>PATTERN LENGTH (N)</label>
+        <input type="number" id="nInput" value="12" min="3">
+      </div>
+      <div class="field">
+        <label>FORECAST HORIZON (M)</label>
+        <input type="number" id="mInput" value="6" min="1">
+      </div>
+      <div class="field">
+        <label>TOP ANALOGS (K)</label>
+        <input type="number" id="kInput" value="8" min="1">
+      </div>
+      <div class="field">
+        <label>SIMILARITY METRIC</label>
+        <select id="metricInput">
+          <option value="corr">Correlation (shape)</option>
+          <option value="euclid">Euclidean (z-scored)</option>
+          <option value="dtw">DTW (elastic)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="controls-subhead">DIMENSION RHYTHM — DOES A CHANNEL REPEAT A VALUE ON A CYCLE?</div>
+    <div class="controls">
+      <div class="field">
+        <label>MATCH TOLERANCE (±)</label>
+        <input type="number" id="tolInput" value="0" min="0" step="any">
+      </div>
+      <div class="field">
+        <label>MAX LAG TO TEST</label>
+        <input type="number" id="lagInput" value="20" min="1">
+      </div>
+    </div>
+
+    <div class="analyze-row">
+      <button class="analyze" id="analyzeBtn">Find rhymes →</button>
+      <span class="status" id="statusMsg"></span>
+    </div>
+  </div>
+
+  <div id="results" style="display:none;">
+
+    <div class="panel">
+      <div class="chart-title"><span>FULL HISTORY</span><span id="historyMeta"></span></div>
+      <div id="historyChannels"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--muted-2);"></span> series</span>
+        <span><span class="swatch" style="background:var(--amber); height:3px;"></span> current pattern</span>
+        <span><span class="swatch" style="background:var(--cyan);"></span> matched moments</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-title"><span>ALIGNED AT "NOW" — ANALOGS &amp; FORECAST</span><span id="overlayMeta"></span></div>
+      <div id="overlayChannels"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--amber); height:3px;"></span> current pattern</span>
+        <span><span class="swatch" style="background:var(--cyan-dim);"></span> historical analogs</span>
+        <span><span class="swatch" style="background:var(--amber-dim); height:8px;"></span> forecast band (25&#8211;75%)</span>
+      </div>
+      <div class="note">Every line is rebased to 0% at "now" (the end of the pattern window), per channel, so shapes from different scales and eras can be compared directly. Analog matching uses all channels together — a "rhyme" means every channel moved together, not just one.</div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-title"><span>MATCHED MOMENTS</span></div>
+      <div class="strip" id="cardStrip"></div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-title"><span>READOUT</span></div>
+      <div id="readout"></div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-title"><span>DIMENSION RHYTHM — REPEAT PROBABILITY BY LAG</span><span id="rhythmMeta"></span></div>
+      <div id="rhythmChannels"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--cyan-dim);"></span> repeat rate at lag</span>
+        <span><span class="swatch" style="background:var(--amber);"></span> best lag for this channel</span>
+        <span><span class="swatch" style="background:var(--muted-2); height:1px;"></span> baseline (chance) rate</span>
+      </div>
+      <div id="rhythmReadout" style="margin-top:12px;"></div>
+      <div class="note">For each channel, this checks every lag x: out of all pairs of moments x steps apart, what share land within the tolerance of each other — versus the baseline rate for that channel overall. A bar well above the baseline line means that spacing repeats more than chance alone would produce. With many lags tested, some bars will clear the bar by luck — treat a single spike with caution, especially on short series, and more so as ± tolerance and channel count grow.</div>
+    </div>
+
+    <div class="panel">
+      <div class="chart-title"><span>PREDICTIONS</span></div>
+      <div class="controls-subhead">NEXT TIME STEP — T_last + 1</div>
+      <div id="nextStepTable"></div>
+      <div class="controls-subhead" style="margin-top:18px;">HIGH-PROBABILITY REPEAT EVENTS</div>
+      <div id="repeatEvents"></div>
+      <div class="note">Next-step values come from the analog forecast above: the median outcome across matched historical moments. Repeat events come from the dimension-rhythm analysis: a specific number, channel, and future spacing where that channel's own history repeats more than chance alone would. Both are empirical estimates from a limited sample, not guarantees — read the probability as relative confidence, not certainty, and treat any "low confidence" event as a hint rather than a call.</div>
+    </div>
+
+    <div class="divider"></div>
+    <p class="note">This is pattern-similarity across channels, not causality. A short, noisy series will produce a small analog sample and a wide, low-confidence band — that width is information too, not a flaw to fix.</p>
+  </div>
+
+  <div class="empty" id="emptyState">No analysis yet — paste a set of numbers per time step above and press "Find rhymes."</div>
+
+</div>
+
+<script>
+(function(){
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  function el(tag, attrs){
+    const e = document.createElementNS(SVG_NS, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function parseMultiSeries(text){
+    const rawLines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+    if(rawLines.length===0) return {matrix:[], error:null};
+    const rows = [];
+    let D = null;
+    for(let li=0; li<rawLines.length; li++){
+      const line = rawLines[li];
+      const parts = line.split(/[,\s]+/).map(s=>s.trim()).filter(s=>s.length>0);
+      const nums = parts.map(p=>parseFloat(p));
+      if(nums.length===0 || nums.some(v=>isNaN(v))){
+        return {matrix:[], error: 'Line ' + (li+1) + ' has a non-numeric value: "' + line + '"'};
+      }
+      if(D===null) D = nums.length;
+      if(nums.length !== D){
+        return {matrix:[], error: 'Line ' + (li+1) + ' has ' + nums.length + ' numbers, but line 1 has ' + D + '. Every time step needs the same count.'};
+      }
+      if(D<1 || D>10){
+        return {matrix:[], error: 'Each time step must have 1 to 10 numbers (found ' + D + ').'};
+      }
+      rows.push(nums);
+    }
+    return {matrix: rows, error: null};
+  }
+
+  function mean(a){ return a.reduce((s,v)=>s+v,0)/a.length; }
+  function std(a){
+    const m = mean(a);
+    return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/a.length);
+  }
+  function flatten(matrix){ return matrix.reduce((acc,row)=>acc.concat(row),[]); }
+
+  function zscoreWindowMatrix(W){
+    const N = W.length, D = W[0].length;
+    const norm = W.map(row=>row.slice());
+    for(let d=0; d<D; d++){
+      const col = W.map(row=>row[d]);
+      const m = mean(col), s = std(col);
+      for(let i=0;i<N;i++) norm[i][d] = s<1e-9 ? 0 : (col[i]-m)/s;
+    }
+    return norm;
+  }
+
+  function pearsonFlat(a,b){
+    const ma=mean(a), mb=mean(b);
+    let num=0, da=0, db=0;
+    for(let i=0;i<a.length;i++){
+      num += (a[i]-ma)*(b[i]-mb);
+      da += (a[i]-ma)*(a[i]-ma);
+      db += (b[i]-mb)*(b[i]-mb);
+    }
+    if(da<1e-9 || db<1e-9) return 0;
+    return num/Math.sqrt(da*db);
+  }
+  function euclidFlat(a,b){
+    let s=0;
+    for(let i=0;i<a.length;i++) s += (a[i]-b[i])*(a[i]-b[i]);
+    return Math.sqrt(s);
+  }
+  function euclidRow(r1,r2){
+    let s=0;
+    for(let d=0;d<r1.length;d++) s += (r1[d]-r2[d])*(r1[d]-r2[d]);
+    return Math.sqrt(s);
+  }
+  function dtwMulti(a,b){
+    const n=a.length, m=b.length;
+    const Dm = [];
+    for(let i=0;i<=n;i++) Dm.push(new Array(m+1).fill(Infinity));
+    Dm[0][0]=0;
+    for(let i=1;i<=n;i++){
+      for(let j=1;j<=m;j++){
+        const cost = euclidRow(a[i-1], b[j-1]);
+        Dm[i][j] = cost + Math.min(Dm[i-1][j], Dm[i][j-1], Dm[i-1][j-1]);
+      }
+    }
+    return Dm[n][m];
+  }
+  function percentile(sorted, p){
+    if(sorted.length===0) return 0;
+    const idx = (p/100)*(sorted.length-1);
+    const lo=Math.floor(idx), hi=Math.ceil(idx);
+    if(lo===hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi]-sorted[lo])*(idx-lo);
+  }
+  function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+  function makeScale(d0,d1,r0,r1){
+    return function(v){
+      if(d1===d0) return (r0+r1)/2;
+      return r0 + (v-d0)/(d1-d0)*(r1-r0);
+    };
+  }
+  function pathFromPoints(pts){
+    return pts.map((p,i)=> (i===0?"M":"L") + p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
+  }
+
+  document.getElementById('sampleBtn').addEventListener('click', function(){
+    const T = 90, D = 4;
+    const lines = [];
+    for(let t=0;t<T;t++){
+      const row = [];
+      for(let d=0; d<D; d++){
+        const phase = d*0.7;
+        const amp = 5 + d*1.5;
+        const cycle = amp*Math.sin(t/10 + phase) + (amp*0.5)*Math.sin(t/23 + phase*1.3);
+        const drift = t*0.02*(d+1)*0.3;
+        const noise = (Math.random()-0.5)*1.8;
+        const level = 100 + d*8 + drift + cycle + noise;
+        row.push(Math.round(level*100)/100);
+      }
+      lines.push(row.join(', '));
+    }
+    document.getElementById('dataInput').value = lines.join('\n');
+  });
+
+  document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+
+  function setStatus(msg, isErr){
+    const s = document.getElementById('statusMsg');
+    s.textContent = msg || '';
+    s.className = 'status' + (isErr ? ' err' : '');
+  }
+  function hideResults(){
+    document.getElementById('results').style.display='none';
+    document.getElementById('emptyState').style.display='block';
+  }
+
+  function runAnalysis(){
+    const text = document.getElementById('dataInput').value;
+    const parsed = parseMultiSeries(text);
+    if(parsed.error){
+      setStatus(parsed.error, true);
+      hideResults();
+      return;
+    }
+    const matrix = parsed.matrix;
+    const T = matrix.length;
+    const D = T>0 ? matrix[0].length : 0;
+
+    if(T < 10){
+      setStatus('Need at least 10 time steps — found ' + T + '.', true);
+      hideResults();
+      return;
+    }
+
+    let N = clamp(parseInt(document.getElementById('nInput').value)||12, 3, Math.floor(T/3));
+    let M = clamp(parseInt(document.getElementById('mInput').value)||6, 1, Math.floor(T/4)||1);
+    let K = clamp(parseInt(document.getElementById('kInput').value)||8, 1, 40);
+    const metric = document.getElementById('metricInput').value;
+    document.getElementById('nInput').value = N;
+    document.getElementById('mInput').value = M;
+
+    const currentWindow = matrix.slice(T-N, T);
+    const currentNorm = zscoreWindowMatrix(currentWindow);
+    const currentFlat = flatten(currentNorm);
+
+    const minSep = Math.max(2, Math.floor(N/2));
+    const candidates = [];
+    for(let i=0; i<=T-N-M; i++){
+      if(i+N-1 >= T-N) continue;
+      const w = matrix.slice(i, i+N);
+      const wNorm = zscoreWindowMatrix(w);
+      let score;
+      if(metric==='corr') score = pearsonFlat(currentFlat, flatten(wNorm));
+      else if(metric==='euclid') score = -euclidFlat(currentFlat, flatten(wNorm));
+      else score = -dtwMulti(currentNorm, wNorm);
+      candidates.push({idx:i, score:score});
+    }
+
+    if(candidates.length < 3){
+      setStatus('Not enough history for that pattern length / horizon combination. Try a shorter N or M.', true);
+      hideResults();
+      return;
+    }
+
+    candidates.sort((a,b)=> b.score - a.score);
+    const allScores = candidates.map(c=>c.score).slice().sort((a,b)=>a-b);
+    function simPercent(score){
+      let below = 0;
+      for(const s of allScores){ if(s<=score) below++; }
+      return Math.round(100*below/allScores.length);
+    }
+
+    const picked = [];
+    for(const c of candidates){
+      if(picked.length >= K) break;
+      const tooClose = picked.some(p => Math.abs(p.idx - c.idx) < minSep);
+      if(tooClose) continue;
+      picked.push(c);
+    }
+
+    const analogs = picked.map(c=>{
+      const w = matrix.slice(c.idx, c.idx+N);
+      const base = w[N-1];
+      const future = matrix.slice(c.idx+N, c.idx+N+M);
+      const windowPct = w.map(row => row.map((v,d)=> Math.abs(base[d])<1e-9 ? (v-base[d]) : (v-base[d])/base[d]));
+      const futurePct = future.map(row => row.map((v,d)=> Math.abs(base[d])<1e-9 ? (v-base[d]) : (v-base[d])/base[d]));
+      return { idx:c.idx, sim: simPercent(c.score), windowPct, futurePct };
+    });
+
+    const currentBase = currentWindow[N-1];
+    const currentWindowPct = currentWindow.map(row => row.map((v,d)=> Math.abs(currentBase[d])<1e-9 ? (v-currentBase[d]) : (v-currentBase[d])/currentBase[d]));
+
+    const forecast = [];
+    for(let d=0; d<D; d++){
+      const fc = {median:[], p25:[], p75:[], min:[], max:[]};
+      for(let h=0; h<M; h++){
+        const vals = analogs.map(a=>a.futurePct[h][d]).sort((a,b)=>a-b);
+        fc.median.push(percentile(vals,50));
+        fc.p25.push(percentile(vals,25));
+        fc.p75.push(percentile(vals,75));
+        fc.min.push(vals[0]);
+        fc.max.push(vals[vals.length-1]);
+      }
+      forecast.push(fc);
+    }
+
+    const dimSummaries = [];
+    for(let d=0; d<D; d++){
+      const finalMoves = analogs.map(a=>a.futurePct[M-1][d]);
+      const upCount = finalMoves.filter(v=>v>0).length;
+      const probUp = Math.round(100*upCount/finalMoves.length);
+      const medianFinal = percentile(finalMoves.slice().sort((a,b)=>a-b),50);
+      dimSummaries.push({ d, probUp, medianFinal, p25: forecast[d].p25[M-1], p75: forecast[d].p75[M-1] });
+    }
+
+    const tolerance = Math.max(0, parseFloat(document.getElementById('tolInput').value) || 0);
+    const maxLag = clamp(parseInt(document.getElementById('lagInput').value)||20, 1, Math.max(1, T-8));
+    document.getElementById('lagInput').value = maxLag;
+    const rhythm = computeDimensionRhythm(matrix, D, T, tolerance, maxLag);
+
+    const isIntegerData = matrix.every(row=>row.every(v=>Number.isInteger(v)));
+    const fmtVal = v => isIntegerData ? Math.round(v).toString() : v.toFixed(2);
+
+    function predictedLevel(baseVal, medianPct){
+      return Math.abs(baseVal) < 1e-9 ? baseVal + medianPct : baseVal*(1+medianPct);
+    }
+    const nextStep = [];
+    for(let d=0; d<D; d++){
+      const base = currentWindow[N-1][d];
+      nextStep.push({
+        d,
+        predicted: predictedLevel(base, forecast[d].median[0]),
+        low: predictedLevel(base, forecast[d].p25[0]),
+        high: predictedLevel(base, forecast[d].p75[0])
+      });
+    }
+
+    const repeatEvents = [];
+    rhythm.forEach(r=>{
+      const base = currentWindow[N-1][r.d];
+      if(r.best){
+        repeatEvents.push({ d:r.d, lag:r.best.lag, value:base, probability:r.best.rate, background:r.background, confident:true });
+      } else {
+        const ranked = r.lagStats.filter(s=>s.n>=8).slice().sort((a,b)=>b.z-a.z);
+        if(ranked.length>0){
+          repeatEvents.push({ d:r.d, lag:ranked[0].lag, value:base, probability:ranked[0].rate, background:r.background, confident:false });
+        }
+      }
+    });
+    repeatEvents.sort((a,b)=>{
+      if(a.confident !== b.confident) return a.confident ? -1 : 1;
+      return b.probability - a.probability;
+    });
+
+    setStatus('Detected ' + D + ' channel' + (D>1?'s':'') + ' \u00d7 ' + T + ' time steps \u2014 ' + analogs.length + ' analogs selected from ' + candidates.length + ' candidates.', false);
+    document.getElementById('emptyState').style.display='none';
+    document.getElementById('results').style.display='block';
+
+    renderHistoryChannels(matrix, T-N, T-1, analogs, N, D);
+    renderOverlayChannels(currentWindowPct, analogs, forecast, N, M, D);
+    renderCards(analogs, N, M, D);
+    renderReadout({ N, M, metric, searched: candidates.length, used: analogs.length }, dimSummaries, D);
+    renderRhythmChannels(rhythm, D);
+    renderRhythmReadout(rhythm, D, tolerance);
+    renderNextStepTable(nextStep, D, fmtVal);
+    renderRepeatEvents(repeatEvents, D, tolerance, fmtVal);
+
+    document.getElementById('historyMeta').textContent = T + ' steps \u00d7 ' + D + ' ch';
+    document.getElementById('overlayMeta').textContent = analogs.length + ' analogs \u00b7 horizon ' + M;
+    document.getElementById('rhythmMeta').textContent = 'tol \u00b1' + tolerance + ' \u00b7 lags 1\u2013' + maxLag;
+  }
+
+  function renderNextStepTable(nextStep, D, fmtVal){
+    const box = document.getElementById('nextStepTable');
+    let html = '<table class="dim-table"><thead><tr><th>CH</th><th>PREDICTED</th><th>RANGE (P25\u2013P75)</th></tr></thead><tbody>';
+    nextStep.forEach(s=>{
+      html += '<tr><td>' + (D>1?(s.d+1):'\u2014') + '</td>' +
+        '<td style="font-family:\'Fraunces\',serif; font-size:15px;">' + fmtVal(s.predicted) + '</td>' +
+        '<td>' + fmtVal(s.low) + ' to ' + fmtVal(s.high) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    box.innerHTML = html;
+  }
+
+  function renderRepeatEvents(events, D, tolerance, fmtVal){
+    const box = document.getElementById('repeatEvents');
+    if(events.length===0){
+      box.innerHTML = '<div class="rhythm-callout"><span class="none">No channel produced a repeat pattern worth naming a specific future number for.</span></div>';
+      return;
+    }
+    let html = '';
+    events.slice(0,6).forEach(e=>{
+      const dimPhrase = D>1 ? (' at dimension ' + (e.d+1)) : '';
+      const valuePhrase = tolerance>0 ? ('a value within \u00b1' + tolerance + ' of ' + fmtVal(e.value)) : ('exactly ' + fmtVal(e.value));
+      const confPhrase = e.confident ? '' : ' \u2014 below the significance bar, so dimension attribution is uncertain: treat as a low-confidence hint';
+      const style = e.confident ? '' : ' style="opacity:0.65;"';
+      html += '<div class="rhythm-callout"' + style + '>' +
+        'At <strong>T_last + ' + e.lag + '</strong>, expect ' + valuePhrase + dimPhrase +
+        ' \u2014 probability <strong>' + Math.round(e.probability*100) + '%</strong> (baseline ' + Math.round(e.background*100) + '%)' + confPhrase + '.</div>';
+    });
+    box.innerHTML = html;
+  }
+
+  function computeBackgroundMatchRate(col, tolerance){
+    const T = col.length;
+    const maxPairs = 4000;
+    let matches = 0, total = 0;
+    const totalPairs = T*(T-1)/2;
+    if(totalPairs <= maxPairs){
+      for(let i=0;i<T;i++){
+        for(let j=i+1;j<T;j++){
+          total++;
+          if(Math.abs(col[i]-col[j]) <= tolerance) matches++;
+        }
+      }
+    } else {
+      for(let k=0;k<maxPairs;k++){
+        const i = Math.floor(Math.random()*T);
+        let j = Math.floor(Math.random()*T);
+        if(j===i) j = (j+1)%T;
+        total++;
+        if(Math.abs(col[i]-col[j]) <= tolerance) matches++;
+      }
+    }
+    return total>0 ? matches/total : 0;
+  }
+
+  function computeDimensionRhythm(matrix, D, T, tolerance, maxLag){
+    const results = [];
+    for(let d=0; d<D; d++){
+      const col = matrix.map(row=>row[d]);
+      const background = computeBackgroundMatchRate(col, tolerance);
+      const lagStats = [];
+      for(let lag=1; lag<=maxLag; lag++){
+        const n = T-lag;
+        let m = 0;
+        for(let t=0;t<n;t++){
+          if(Math.abs(col[t+lag]-col[t]) <= tolerance) m++;
+        }
+        const rate = n>0 ? m/n : 0;
+        const p = background;
+        const z = (n>=8 && p>0 && p<1) ? (rate-p)/Math.sqrt(p*(1-p)/n) : 0;
+        lagStats.push({ lag, rate, n, z });
+      }
+      const ranked = lagStats.filter(s=>s.n>=8).slice().sort((a,b)=>b.z-a.z);
+      const best = ranked.length>0 && ranked[0].z>1.5 ? ranked[0] : null;
+      results.push({ d, background, lagStats, best });
+    }
+    return results;
+  }
+
+  function drawRhythmBarChart(svg, lagStats, background, bestLag, H){
+    svg.innerHTML = '';
+    const W=720, padL=34, padR=10, padT=10, padB=20;
+    const maxLag = lagStats.length;
+    const maxRate = Math.max(background, ...lagStats.map(s=>s.rate)) * 1.15 || 0.1;
+    const x = makeScale(0.5, maxLag+0.5, padL, W-padR);
+    const y = makeScale(0, maxRate, H-padB, padT);
+    const barW = Math.max(1.5, (W-padL-padR)/maxLag*0.6);
+
+    [0, maxRate].forEach(v=>{
+      const t = el('text', {x:2, y:y(v)+3, fill:'var(--muted-2)', 'font-size':9, 'font-family':'IBM Plex Mono, monospace'});
+      t.textContent = Math.round(v*100)+'%';
+      svg.appendChild(t);
+    });
+
+    lagStats.forEach(s=>{
+      const isBest = bestLag && s.lag===bestLag.lag;
+      const bx = x(s.lag)-barW/2, by = y(s.rate);
+      svg.appendChild(el('rect', {
+        x:bx, y:by, width:barW, height:Math.max(0,(H-padB)-by),
+        fill: isBest ? 'var(--amber)' : 'var(--cyan-dim)'
+      }));
+    });
+
+    svg.appendChild(el('line', {x1:padL, y1:y(background), x2:W-padR, y2:y(background), stroke:'var(--muted-2)', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
+
+    const step = Math.max(1, Math.round(maxLag/8));
+    for(let lag=step; lag<=maxLag; lag+=step){
+      const t = el('text', {x:x(lag), y:H-4, fill:'var(--muted-2)', 'font-size':9, 'font-family':'IBM Plex Mono, monospace', 'text-anchor':'middle'});
+      t.textContent = lag;
+      svg.appendChild(t);
+    }
+  }
+
+  function renderRhythmChannels(rhythm, D){
+    const container = document.getElementById('rhythmChannels');
+    container.innerHTML = '';
+    const H = D>1 ? 110 : 150;
+    rhythm.forEach(r=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'channel';
+      if(D>1){
+        const label = document.createElement('div');
+        label.className = 'channel-label';
+        label.textContent = 'CH ' + (r.d+1);
+        wrap.appendChild(label);
+      }
+      const svg = document.createElementNS(SVG_NS,'svg');
+      svg.setAttribute('viewBox','0 0 720 ' + H);
+      wrap.appendChild(svg);
+      container.appendChild(wrap);
+      drawRhythmBarChart(svg, r.lagStats, r.background, r.best, H);
+    });
+  }
+
+  function renderRhythmReadout(rhythm, D, tolerance){
+    const box = document.getElementById('rhythmReadout');
+    let html = '';
+    rhythm.forEach(r=>{
+      const chLabel = D>1 ? ('Channel ' + (r.d+1) + ': ') : '';
+      if(r.best){
+        html += '<div class="rhythm-callout">' + chLabel +
+          'best repeat spacing is every <strong>' + r.best.lag + '</strong> steps \u2014 values land within \u00b1' + tolerance +
+          ' <strong>' + Math.round(r.best.rate*100) + '%</strong> of the time there, versus a ' +
+          Math.round(r.background*100) + '% baseline (z=' + r.best.z.toFixed(1) + ', n=' + r.best.n + ').</div>';
+      } else {
+        html += '<div class="rhythm-callout">' + chLabel + '<span class="none">no lag stood out clearly above the baseline rate.</span></div>';
+      }
+    });
+    box.innerHTML = html;
+  }
+
+  function metricLabel(m){
+    return m==='corr' ? 'Correlation' : (m==='euclid' ? 'Euclidean' : 'DTW');
+  }
+
+  function drawHistoryInto(svg, seriesD, curStart, curEnd, analogs, N, H){
+    svg.innerHTML = '';
+    const W=720, padL=6, padR=6, padT=14, padB=10;
+    const n = seriesD.length;
+    const yMin = Math.min(...seriesD), yMax = Math.max(...seriesD);
+    const pad = (yMax-yMin)*0.08 || 1;
+    const x = makeScale(0, n-1, padL, W-padR);
+    const y = makeScale(yMin-pad, yMax+pad, H-padB, padT);
+
+    analogs.forEach(a=>{
+      const cx = x(a.idx + N/2);
+      svg.appendChild(el('line', {x1:cx, y1:padT-6, x2:cx, y2:padT, stroke:'var(--cyan)', 'stroke-width':2}));
+    });
+
+    const full = seriesD.map((v,i)=>[x(i), y(v)]);
+    svg.appendChild(el('path', {d:pathFromPoints(full), fill:'none', stroke:'#4A5261', 'stroke-width':1.2}));
+
+    const curPts = [];
+    for(let i=curStart;i<=curEnd;i++) curPts.push([x(i), y(seriesD[i])]);
+    svg.appendChild(el('path', {d:pathFromPoints(curPts), fill:'none', stroke:'var(--amber)', 'stroke-width':2.4}));
+  }
+
+  function renderHistoryChannels(matrix, curStart, curEnd, analogs, N, D){
+    const container = document.getElementById('historyChannels');
+    container.innerHTML = '';
+    const H = D>1 ? 110 : 200;
+    for(let d=0; d<D; d++){
+      const wrap = document.createElement('div');
+      wrap.className = 'channel';
+      if(D>1){
+        const label = document.createElement('div');
+        label.className = 'channel-label';
+        label.textContent = 'CH ' + (d+1);
+        wrap.appendChild(label);
+      }
+      const svg = document.createElementNS(SVG_NS,'svg');
+      svg.setAttribute('viewBox','0 0 720 ' + H);
+      wrap.appendChild(svg);
+      container.appendChild(wrap);
+      drawHistoryInto(svg, matrix.map(row=>row[d]), curStart, curEnd, analogs, N, H);
+    }
+  }
+
+  function drawOverlayInto(svg, currentWindowPctD, analogsD, forecastD, N, M, H){
+    svg.innerHTML = '';
+    const W=720, padL=34, padR=10, padT=14, padB=20;
+
+    let allVals = currentWindowPctD.slice();
+    analogsD.forEach(a=>{ allVals = allVals.concat(a.win).concat(a.fut); });
+    allVals = allVals.concat(forecastD.min).concat(forecastD.max);
+    const yMin = Math.min(...allVals, 0), yMax = Math.max(...allVals, 0);
+    const pad = (yMax-yMin)*0.1 || 0.02;
+
+    const x = makeScale(-(N-1), M, padL, W-padR);
+    const y = makeScale(yMin-pad, yMax+pad, H-padB, padT);
+
+    svg.appendChild(el('line', {x1:padL, y1:y(0), x2:W-padR, y2:y(0), stroke:'var(--line)', 'stroke-width':1}));
+    const nowX = x(0);
+    svg.appendChild(el('line', {x1:nowX, y1:padT, x2:nowX, y2:H-padB, stroke:'var(--line)', 'stroke-width':1, 'stroke-dasharray':'3,3'}));
+
+    [yMax, 0, yMin].forEach(v=>{
+      const t = el('text', {x:2, y:y(v)+3, fill:'var(--muted-2)', 'font-size':9, 'font-family':'IBM Plex Mono, monospace'});
+      t.textContent = (v*100).toFixed(1)+'%';
+      svg.appendChild(t);
+    });
+
+    analogsD.forEach(a=>{
+      const pts = [];
+      for(let j=0;j<N;j++) pts.push([x(j-(N-1)), y(a.win[j])]);
+      for(let h=0;h<M;h++) pts.push([x(h+1), y(a.fut[h])]);
+      svg.appendChild(el('path', {d:pathFromPoints(pts), fill:'none', stroke:'var(--cyan-dim)', 'stroke-width':1.1}));
+    });
+
+    const bandPts = [];
+    for(let h=0;h<M;h++) bandPts.push([x(h+1), y(forecastD.p75[h])]);
+    for(let h=M-1;h>=0;h--) bandPts.push([x(h+1), y(forecastD.p25[h])]);
+    bandPts.push([nowX, y(0)]);
+    svg.appendChild(el('path', {d:pathFromPoints(bandPts)+' Z', fill:'var(--amber-dim)', stroke:'none'}));
+
+    const medPts = [[nowX, y(0)]];
+    for(let h=0;h<M;h++) medPts.push([x(h+1), y(forecastD.median[h])]);
+    svg.appendChild(el('path', {d:pathFromPoints(medPts), fill:'none', stroke:'var(--amber)', 'stroke-width':2, 'stroke-dasharray':'5,3'}));
+
+    const curPts = [];
+    for(let j=0;j<N;j++) curPts.push([x(j-(N-1)), y(currentWindowPctD[j])]);
+    svg.appendChild(el('path', {d:pathFromPoints(curPts), fill:'none', stroke:'var(--amber)', 'stroke-width':2.4}));
+  }
+
+  function renderOverlayChannels(currentWindowPct, analogs, forecast, N, M, D){
+    const container = document.getElementById('overlayChannels');
+    container.innerHTML = '';
+    const H = D>1 ? 140 : 220;
+    for(let d=0; d<D; d++){
+      const wrap = document.createElement('div');
+      wrap.className = 'channel';
+      if(D>1){
+        const label = document.createElement('div');
+        label.className = 'channel-label';
+        label.textContent = 'CH ' + (d+1);
+        wrap.appendChild(label);
+      }
+      const svg = document.createElementNS(SVG_NS,'svg');
+      svg.setAttribute('viewBox','0 0 720 ' + H);
+      wrap.appendChild(svg);
+      container.appendChild(wrap);
+
+      const currentD = currentWindowPct.map(row=>row[d]);
+      const analogsD = analogs.map(a=>({ win: a.windowPct.map(r=>r[d]), fut: a.futurePct.map(r=>r[d]) }));
+      drawOverlayInto(svg, currentD, analogsD, forecast[d], N, M, H);
+    }
+  }
+
+  function renderCards(analogs, N, M, D){
+    const strip = document.getElementById('cardStrip');
+    strip.innerHTML = '';
+    const sorted = analogs.slice().sort((a,b)=> b.sim - a.sim);
+    sorted.forEach(a=>{
+      const card = document.createElement('div');
+      card.className = 'card';
+      let outcomeHtml = '';
+      for(let d=0; d<D; d++){
+        const mv = a.futurePct[M-1][d];
+        const cls = mv>=0 ? 'up' : 'down';
+        const sign = mv>=0 ? '+' : '';
+        const chLabel = D>1 ? ('CH'+(d+1)+' ') : 'by t+'+M+' ';
+        outcomeHtml += '<div class="outcome ' + cls + '">' + chLabel + sign + (mv*100).toFixed(1) + '%</div>';
+      }
+      card.innerHTML =
+        '<div class="idx">t=' + a.idx + '\u2013' + (a.idx+N) + '</div>' +
+        '<div class="sim">' + a.sim + '% match</div>' +
+        outcomeHtml;
+      strip.appendChild(card);
+    });
+  }
+
+  function item(label, value){
+    return '<div class="rd-item"><div class="rd-label">' + label + '</div><div class="rd-value">' + value + '</div></div>';
+  }
+
+  function renderReadout(top, dimSummaries, D){
+    const box = document.getElementById('readout');
+    let html = '<div class="readout-top">' +
+      item('PATTERN LENGTH', top.N + ' pts') +
+      item('HORIZON', top.M + ' pts') +
+      item('METRIC', metricLabel(top.metric)) +
+      item('ANALOGS USED', top.used + ' of ' + top.searched) +
+    '</div>';
+    html += '<table class="dim-table"><thead><tr><th>CH</th><th>DIRECTION</th><th>MEDIAN MOVE</th><th>RANGE (P25\u2013P75)</th></tr></thead><tbody>';
+    dimSummaries.forEach(s=>{
+      const dirCls = s.probUp>=50 ? 'up' : 'down';
+      const medCls = s.medianFinal>=0 ? 'up' : 'down';
+      html += '<tr><td>' + (D>1 ? (s.d+1) : '\u2014') + '</td>' +
+        '<td class="' + dirCls + '">' + s.probUp + '% up / ' + (100-s.probUp) + '% down</td>' +
+        '<td class="' + medCls + '">' + (s.medianFinal>=0?'+':'') + (s.medianFinal*100).toFixed(1) + '%</td>' +
+        '<td>' + (s.p25*100).toFixed(1) + '% to ' + (s.p75*100).toFixed(1) + '%</td></tr>';
+    });
+    html += '</tbody></table>';
+    box.innerHTML = html;
+  }
+
+})();
+</script>
+</body>
+</html>
